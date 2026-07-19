@@ -1,0 +1,76 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "schedule": [
+    "before 4am"
+  ],
+  "automerge": true,
+  "ignoreTests": true,
+  "platformAutomerge": true,
+  "prHourlyLimit": 99,
+  "prConcurrentLimit": 99,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Dockerfile$"
+      ],
+      "matchStrings": [
+        "ARG T3CODE_VERSION=v?(?<currentValue>\\d+\\.\\d+\\.\\d+(?:-\\w+)?)"
+      ],
+      "depNameTemplate": "pingdotgg/t3code",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v?(?<version>\\d+\\.\\d+\\.\\d+(?:-\\w+)?)"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Dockerfile$"
+      ],
+      "matchStrings": [
+        "ARG OPENCODE_VERSION=(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "anomalyco/opencode",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v?(?<version>\\d+\\.\\d+\\.\\d+)"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Dockerfile$"
+      ],
+      "matchStrings": [
+        "corepack prepare pnpm@(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "pnpm",
+      "datasourceTemplate": "npm",
+      "versioningTemplate": "npm"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": [
+        "anomalyco/opencode"
+      ],
+      "extractVersion": "^v(?<version>\\d+\\.\\d+\\.\\d+)"
+    },
+    {
+      "matchPackageNames": [
+        "pingdotgg/t3code"
+      ],
+      "extractVersion": "^v(?<version>\\d+\\.\\d+\\.\\d+(?:-\\w+)?)"
+    },
+    {
+      "matchUpdateTypes": [
+        "major",
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
+      "automerge": true
+    }
+  ]
+}
