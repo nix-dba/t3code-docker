@@ -16,7 +16,7 @@ jobs:
         run: |
           cleaned_pr_title=$(echo "${{ github.event.pull_request.title }}" | sed 's/"//g')
           echo "$cleaned_pr_title"
-          if [[ "$cleaned_pr_title" == *"dependency playcanvas/supersplat to v"* ]]; then
+          if [[ "$cleaned_pr_title" == *"dependency pingdotgg/t3code to v"* ]] || [[ "$cleaned_pr_title" == *"dependency anomalyco/opencode to v"* ]] || [[ "$cleaned_pr_title" == *"dependency pnpm to v"* ]]; then
             version=$(echo "${{ github.event.pull_request.title }}" | grep -oP 'v\d+\.\d+\.\d+')
             echo "create tag $version"
             echo "version=$version" >> $GITHUB_OUTPUT
@@ -28,11 +28,10 @@ jobs:
       - name: Create Release
         if: steps.extract_version.outputs.version
         id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.GHCR_TOKEN }}
           tag_name: ${{ steps.extract_version.outputs.version }}
-          release_name: Release ${{ steps.extract_version.outputs.version }}
+          name: Release ${{ steps.extract_version.outputs.version }}
           draft: false
           prerelease: false
