@@ -18,7 +18,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Enable pnpm 11.10.0 (matches the repo's packageManager field)
-RUN corepack enable && corepack prepare pnpm@11.10.0 --activate
+RUN corepack enable && corepack prepare pnpm@11.15.1 --activate
 
 # Which repository ref to build
 ARG T3CODE_REPO=https://github.com/pingdotgg/t3code.git
@@ -65,7 +65,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # OpenCode version — tracked by Renovate
-ARG OPENCODE_VERSION=1.18.3
+ARG OPENCODE_VERSION=1.18.4
 
 # Install OpenCode directly. Detect architecture and download the correct build.
 # Using direct download avoids the install script's $HOME/.opencode directory,
