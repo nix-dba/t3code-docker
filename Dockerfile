@@ -67,6 +67,9 @@ RUN apt-get update \
 # OpenCode version — tracked by Renovate
 ARG OPENCODE_VERSION=1.18.4
 
+# Codex CLI version — tracked by Renovate
+ARG CODEX_VERSION=0.145.0
+
 # Install OpenCode directly. Detect architecture and download the correct build.
 # Using direct download avoids the install script's $HOME/.opencode directory,
 # which causes permission issues for the non-root t3 user.
@@ -79,6 +82,18 @@ RUN arch=$(uname -m) && \
       | tar -xz -C /usr/local/bin opencode && \
     chmod 755 /usr/local/bin/opencode && \
     opencode --version
+
+# Install Codex CLI directly from GitHub releases. Detect architecture and download
+# the correct build. The tarball contains a single statically-linked musl binary.
+RUN arch=$(uname -m) && \
+    case "$arch" in \
+      x86_64)  arch="x86_64" ;; \
+      aarch64) arch="aarch64" ;; \
+    esac && \
+    curl -fsSL "https://github.com/openai/codex/releases/download/rust-v${CODEX_VERSION}/codex-${arch}-unknown-linux-musl.tar.gz" \
+      | tar -xz -C /usr/local/bin codex && \
+    chmod 755 /usr/local/bin/codex && \
+    codex --version
 
 # Create a non-root user for running the server.
 RUN groupadd --system t3 && \

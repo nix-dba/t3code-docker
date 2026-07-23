@@ -47,6 +47,18 @@
       "depNameTemplate": "pnpm",
       "datasourceTemplate": "npm",
       "versioningTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Dockerfile$"
+      ],
+      "matchStrings": [
+        "ARG CODEX_VERSION=(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "openai/codex",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^rust-v(?<version>\\d+\\.\\d+\\.\\d+)"
     }
   ],
   "packageRules": [
@@ -61,6 +73,12 @@
         "pingdotgg/t3code"
       ],
       "extractVersion": "^v(?<version>\\d+\\.\\d+\\.\\d+(?:-\\w+)?)"
+    },
+    {
+      "matchPackageNames": [
+        "openai/codex"
+      ],
+      "extractVersion": "^rust-v(?<version>\\d+\\.\\d+\\.\\d+)"
     },
     {
       "matchUpdateTypes": [

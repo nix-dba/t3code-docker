@@ -1,6 +1,6 @@
 # t3code-docker
 
-Docker image for [t3code](https://github.com/pingdotgg/t3code) — an open-source AI coding agent UI — with [OpenCode](https://opencode.ai) CLI pre-installed.
+Docker image for [t3code](https://github.com/pingdotgg/t3code) — an open-source AI coding agent UI — with [OpenCode](https://opencode.ai) and [Codex](https://github.com/openai/codex) CLIs pre-installed.
 
 ## Build
 
