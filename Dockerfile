@@ -84,14 +84,15 @@ RUN arch=$(uname -m) && \
     opencode --version
 
 # Install Codex CLI directly from GitHub releases. Detect architecture and download
-# the correct build. The tarball contains a single statically-linked musl binary.
+# the correct build. The tarball contains a single file named codex-{arch} which
+# must be renamed to `codex` on extraction.
 RUN arch=$(uname -m) && \
     case "$arch" in \
       x86_64)  arch="x86_64" ;; \
       aarch64) arch="aarch64" ;; \
     esac && \
     curl -fsSL "https://github.com/openai/codex/releases/download/rust-v${CODEX_VERSION}/codex-${arch}-unknown-linux-musl.tar.gz" \
-      | tar -xz -C /usr/local/bin codex && \
+      | tar -xz --transform='s/.*/codex/' -C /usr/local/bin && \
     chmod 755 /usr/local/bin/codex && \
     codex --version
 
