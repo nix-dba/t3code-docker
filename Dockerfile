@@ -68,7 +68,7 @@ RUN apt-get update \
 ARG OPENCODE_VERSION=1.18.27
 
 # Codex CLI version — tracked by Renovate
-ARG CODEX_VERSION=0.152.1
+ARG CODEX_VERSION=0.153.2
 
 # Install OpenCode directly. Detect architecture and download the correct build.
 # Using direct download avoids the install script's $HOME/.opencode directory,
