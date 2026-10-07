@@ -65,7 +65,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # OpenCode version — tracked by Renovate
-ARG OPENCODE_VERSION=1.18.34
+ARG OPENCODE_VERSION=1.18.35
 
 # Codex CLI version — tracked by Renovate
 ARG CODEX_VERSION=0.160.1
