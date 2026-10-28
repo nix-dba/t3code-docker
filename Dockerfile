@@ -4,7 +4,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 1: Builder
 # ─────────────────────────────────────────────────────────────────────────────
-FROM node:24-bookworm AS builder
+FROM node:26-bookworm AS builder
 
 # Build dependencies for native npm modules (node-pty, esbuild, etc.)
 RUN apt-get update \
@@ -49,7 +49,7 @@ RUN mkdir -p /app/deploy/web && \
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 2: Runtime
 # ─────────────────────────────────────────────────────────────────────────────
-FROM node:24-bookworm-slim AS runtime
+FROM node:26-bookworm-slim AS runtime
 
 # Runtime system dependencies:
 #   git              - required by t3code for VCS operations
