@@ -18,11 +18,11 @@
         "^Dockerfile$"
       ],
       "matchStrings": [
-        "ARG T3CODE_VERSION=v?(?<currentValue>\\d+\\.\\d+\\.\\d+(?:-\\w+)?)"
+        "ARG T3CODE_VERSION=(?<currentValue>\\d+\\.\\d+\\.\\d+)"
       ],
       "depNameTemplate": "pingdotgg/t3code",
       "datasourceTemplate": "github-releases",
-      "extractVersionTemplate": "^v?(?<version>\\d+\\.\\d+\\.\\d+(?:-\\w+)?)"
+      "extractVersionTemplate": "^v?(?<version>\\d+\\.\\d+\\.\\d+)$"
     },
     {
       "customType": "regex",
@@ -34,19 +34,7 @@
       ],
       "depNameTemplate": "anomalyco/opencode",
       "datasourceTemplate": "github-releases",
-      "extractVersionTemplate": "^v?(?<version>\\d+\\.\\d+\\.\\d+)"
-    },
-    {
-      "customType": "regex",
-      "fileMatch": [
-        "^Dockerfile$"
-      ],
-      "matchStrings": [
-        "corepack prepare pnpm@(?<currentValue>\\d+\\.\\d+\\.\\d+)"
-      ],
-      "depNameTemplate": "pnpm",
-      "datasourceTemplate": "npm",
-      "versioningTemplate": "npm"
+      "extractVersionTemplate": "^v?(?<version>\\d+\\.\\d+\\.\\d+)$"
     },
     {
       "customType": "regex",
@@ -58,27 +46,38 @@
       ],
       "depNameTemplate": "openai/codex",
       "datasourceTemplate": "github-releases",
-      "extractVersionTemplate": "^rust-v(?<version>\\d+\\.\\d+\\.\\d+)"
+      "extractVersionTemplate": "^rust-v(?<version>\\d+\\.\\d+\\.\\d+)$"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^Dockerfile$"
+      ],
+      "matchStrings": [
+        "ARG CLAUDE_CODE_VERSION=(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "@anthropic-ai/claude-code",
+      "datasourceTemplate": "npm"
     }
   ],
   "packageRules": [
     {
       "matchPackageNames": [
-        "anomalyco/opencode"
+        "pingdotgg/t3code"
       ],
-      "extractVersion": "^v(?<version>\\d+\\.\\d+\\.\\d+)"
+      "extractVersion": "^v?(?<version>\\d+\\.\\d+\\.\\d+)$"
     },
     {
       "matchPackageNames": [
-        "pingdotgg/t3code"
+        "anomalyco/opencode"
       ],
-      "extractVersion": "^v(?<version>\\d+\\.\\d+\\.\\d+(?:-\\w+)?)"
+      "extractVersion": "^v?(?<version>\\d+\\.\\d+\\.\\d+)$"
     },
     {
       "matchPackageNames": [
         "openai/codex"
       ],
-      "extractVersion": "^rust-v(?<version>\\d+\\.\\d+\\.\\d+)"
+      "extractVersion": "^rust-v(?<version>\\d+\\.\\d+\\.\\d+)$"
     },
     {
       "matchUpdateTypes": [

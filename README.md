@@ -1,6 +1,14 @@
 # t3code-docker
 
-Docker image for [t3code](https://github.com/pingdotgg/t3code) — an open-source AI coding agent UI — with [OpenCode](https://opencode.ai) and [Codex](https://github.com/openai/codex) CLIs pre-installed.
+Docker image for [t3code](https://github.com/pingdotgg/t3code) — an open-source AI coding agent UI — with the following agent CLIs pre-installed:
+
+| CLI | Version | Command |
+|-----|---------|---------|
+| [OpenCode](https://opencode.ai) | 2.2.5 | `opencode` |
+| [Codex](https://github.com/openai/codex) | 0.166.0 | `codex` |
+| [Claude Code](https://claude.com/claude-code) | 2.1.316 | `claude` |
+
+The image installs the official self-contained t3code release, so no source build or pnpm toolchain is required. Node.js 26 is included for MCP servers and other Node-based tooling.
 
 ## Build
 
@@ -8,24 +16,44 @@ Docker image for [t3code](https://github.com/pingdotgg/t3code) — an open-sourc
 docker build -t t3code:latest .
 
 # Pin a specific t3code release
-docker build --build-arg T3CODE_VERSION=v0.0.28 -t t3code:0.0.28 .
+docker build --build-arg T3CODE_VERSION=0.1.6 -t t3code:0.1.6 .
 ```
 
 ## Run
 
 ```bash
-# Headless (prints pairing token to stdout)
-docker run -d -p 3773:3773 -e T3CODE_HOST=0.0.0.0 -v t3code-data:/data t3code:latest serve
+# Headless: prints pairing details to stdout
+docker run -d --name t3code -p 3773:3773 -v t3code-data:/data t3code:latest
 
-# Production mode (opens browser — not useful in Docker)
-docker run -d -p 3773:3773 -e T3CODE_HOST=0.0.0.0 -v t3code-data:/data t3code:latest
+# Override the command (for example, to inspect the CLI)
+docker run --rm t3code:latest --help
 ```
 
-Get the pairing token:
+The image binds to `0.0.0.0` by default so the port mapping works. Get the pairing token from the logs:
 
 ```bash
-docker logs <container> | grep -i "token\|pairing"
+docker logs t3code 2>&1 | grep -iE "pairing|token|http"
 ```
+
+## Included CLIs
+
+The CLIs are available both to t3code and from an interactive shell:
+
+```bash
+docker exec -it t3code opencode --version
+docker exec -it t3code codex --version
+docker exec -it t3code claude --version
+```
+
+Authenticate each CLI once inside the container:
+
+```bash
+docker exec -it t3code opencode auth login
+docker exec -it t3code codex login
+docker exec -it t3code claude   # then run /login
+```
+
+Credentials are stored in the `/data` volume (for example `/data/.claude`, `/data/.codex`, and `/data/.local`), so they survive container recreation as long as the volume is kept.
 
 ## Configuration
 
@@ -34,11 +62,12 @@ All settings are runtime environment variables — no hardcoded URLs.
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `T3CODE_PORT` | Server port | `3773` |
-| `T3CODE_HOST` | Bind address | `0.0.0.0` (serve) |
+| `T3CODE_HOST` | Bind address | `0.0.0.0` |
 | `T3CODE_HOME` | Data directory | `/data` |
 | `T3CODE_LOG_LEVEL` | Log verbosity | `Info` |
 | `T3CODE_RELAY_URL` | T3 Connect relay URL | optional |
 | `T3CODE_CLERK_PUBLISHABLE_KEY` | Clerk auth key | optional |
+| `T3CODE_LAN` | Accept LAN/tailnet connections | unset |
 
 ## Kubernetes
 
@@ -63,9 +92,6 @@ spec:
           args: ["serve"]
           ports:
             - containerPort: 3773
-          env:
-            - name: T3CODE_HOST
-              value: "0.0.0.0"
           volumeMounts:
             - name: data
               mountPath: /data
@@ -78,7 +104,8 @@ spec:
 ## Renovate
 
 This repo includes `renovate.json` for automated dependency updates. It tracks:
-- `pingdotgg/t3code` — when `T3CODE_VERSION` is set to a semver tag like `v0.0.28`
-- `anomalyco/opencode` — opencode CLI versions
-- `pnpm` — package manager version
+- `pingdotgg/t3code` — t3code release versions
+- `anomalyco/opencode` — OpenCode CLI versions
+- `openai/codex` — Codex CLI versions
+- `@anthropic-ai/claude-code` — Claude Code CLI versions
 - Node.js base image (auto-detected by Renovate)

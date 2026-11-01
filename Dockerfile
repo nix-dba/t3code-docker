@@ -1,61 +1,33 @@
-# Production Dockerfile for t3code (https://github.com/pingdotgg/t3code)
-# Includes: Node.js 24, pnpm, git, openssh-client, and the OpenCode CLI.
+# syntax=docker/dockerfile:1
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Stage 1: Builder
-# ─────────────────────────────────────────────────────────────────────────────
-FROM node:26-bookworm AS builder
+# Production image for t3code (https://github.com/pingdotgg/t3code).
+#
+# t3code is installed from the official self-contained release archive, so the
+# image needs no source build, pnpm, or Node toolchain. The agent CLIs are
+# installed as native binaries.
 
-# Build dependencies for native npm modules (node-pty, esbuild, etc.)
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-       python3 \
-       make \
-       g++ \
-       git \
-       ca-certificates \
-       curl \
-    && rm -rf /var/lib/apt/lists/*
+FROM node:26-bookworm-slim
 
-# Enable pnpm 11.10.0 (matches the repo's packageManager field)
-RUN corepack enable && corepack prepare pnpm@12.16.1 --activate
+# Fail a RUN step when any command in a pipe fails (for example, curl | tar).
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Which repository ref to build
-ARG T3CODE_REPO=https://github.com/pingdotgg/t3code.git
-ARG T3CODE_VERSION=main
+# Versions are tracked by Renovate (see renovate.json).
+ARG T3CODE_VERSION=0.1.6
+ARG OPENCODE_VERSION=2.2.5
+ARG CODEX_VERSION=0.166.0
+ARG CLAUDE_CODE_VERSION=2.1.316
+ARG IMAGE_SOURCE=""
 
-WORKDIR /app
+LABEL org.opencontainers.image.title="t3code" \
+      org.opencontainers.image.description="t3code with OpenCode 2, Codex, and Claude Code CLIs" \
+      org.opencontainers.image.source="${IMAGE_SOURCE}" \
+      org.opencontainers.image.version="${T3CODE_VERSION}"
 
-# Clone the source. Using a shallow clone keeps the image context small.
-RUN git clone --depth 1 --branch "${T3CODE_VERSION}" "${T3CODE_REPO}" .
-
-# Install dependencies. The lockfile is present in the repo.
-RUN pnpm install --frozen-lockfile
-
-# Build the full workspace: contracts → packages → web → server.
-RUN pnpm run build
-
-# Create a clean, production-only deployment bundle for the server package.
-# The server package is named "t3" in apps/server/package.json.
-# --legacy is used because the workspace may not set inject-workspace-packages=true.
-RUN pnpm --filter=t3 --prod deploy --legacy /app/deploy
-
-# The server serves the built web app from a path relative to its own dist
-# directory. The deploy target is /app/deploy, so the server expects web dist
-# at /app/deploy/web/dist (../../web/dist relative to dist/bin.mjs).
-RUN mkdir -p /app/deploy/web && \
-    cp -r /app/apps/web/dist /app/deploy/web/dist
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Stage 2: Runtime
-# ─────────────────────────────────────────────────────────────────────────────
-FROM node:26-bookworm-slim AS runtime
-
-# Runtime system dependencies:
-#   git              - required by t3code for VCS operations
-#   openssh-client   - required for SSH-based git remotes
-#   ca-certificates  - required by curl and the application
-#   curl             - required to install OpenCode
+# Runtime dependencies:
+#   git              - VCS operations used by t3code and the agent CLIs
+#   openssh-client   - SSH-based git remotes
+#   ca-certificates  - TLS for curl, git, and the CLIs
+#   curl             - CLI downloads
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        git \
@@ -64,80 +36,82 @@ RUN apt-get update \
        curl \
     && rm -rf /var/lib/apt/lists/*
 
-# OpenCode version — tracked by Renovate
-ARG OPENCODE_VERSION=2.2.5
+# Install t3code from the official self-contained release. The archive contains
+# the server, web client, and runtime, so it can run without Node or pnpm.
+RUN arch="$(uname -m)" \
+    && case "$arch" in \
+         x86_64)  arch="x64" ;; \
+         aarch64) arch="arm64" ;; \
+         *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; \
+       esac \
+    && mkdir -p /opt/t3 \
+    && curl -fsSL "https://github.com/pingdotgg/t3code/releases/download/v${T3CODE_VERSION}/t3-${T3CODE_VERSION}-linux-${arch}.tar.gz" \
+       | tar -xz -C /opt/t3 --strip-components=1 \
+    && ln -s /opt/t3/t3 /usr/local/bin/t3 \
+    && t3 --version
 
-# Codex CLI version — tracked by Renovate
-ARG CODEX_VERSION=0.162.1
+# OpenCode 2 (native binary).
+RUN arch="$(uname -m)" \
+    && case "$arch" in \
+         x86_64)  arch="x64" ;; \
+         aarch64) arch="arm64" ;; \
+         *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; \
+       esac \
+    && curl -fsSL "https://github.com/anomalyco/opencode/releases/download/v${OPENCODE_VERSION}/opencode-linux-${arch}.tar.gz" \
+       | tar -xz -C /usr/local/bin opencode \
+    && chmod 755 /usr/local/bin/opencode \
+    && opencode --version
 
-# Install OpenCode directly. Detect architecture and download the correct build.
-# Using direct download avoids the install script's $HOME/.opencode directory,
-# which causes permission issues for the non-root t3 user.
-RUN arch=$(uname -m) && \
-    case "$arch" in \
-      x86_64)  arch="x64" ;; \
-      aarch64) arch="arm64" ;; \
-    esac && \
-    curl -fsSL "https://github.com/anomalyco/opencode/releases/download/v${OPENCODE_VERSION}/opencode-linux-${arch}.tar.gz" \
-      | tar -xz -C /usr/local/bin opencode && \
-    chmod 755 /usr/local/bin/opencode && \
-    opencode --version
+# Codex CLI (native binary). The release asset is named after its target triple,
+# so rename it to `codex` during extraction.
+RUN arch="$(uname -m)" \
+    && case "$arch" in \
+         x86_64)  arch="x86_64" ;; \
+         aarch64) arch="aarch64" ;; \
+         *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; \
+       esac \
+    && curl -fsSL "https://github.com/openai/codex/releases/download/rust-v${CODEX_VERSION}/codex-${arch}-unknown-linux-musl.tar.gz" \
+       | tar -xz --transform='s|^codex-.*|codex|' -C /usr/local/bin \
+    && chmod 755 /usr/local/bin/codex \
+    && codex --version
 
-# Install Codex CLI directly from GitHub releases. Detect architecture and download
-# the correct build. The tarball contains a single file named codex-{arch} which
-# must be renamed to `codex` on extraction.
-RUN arch=$(uname -m) && \
-    case "$arch" in \
-      x86_64)  arch="x86_64" ;; \
-      aarch64) arch="aarch64" ;; \
-    esac && \
-    curl -fsSL "https://github.com/openai/codex/releases/download/rust-v${CODEX_VERSION}/codex-${arch}-unknown-linux-musl.tar.gz" \
-      | tar -xz --transform='s/.*/codex/' -C /usr/local/bin && \
-    chmod 755 /usr/local/bin/codex && \
-    codex --version
+# Claude Code (native binary).
+RUN arch="$(uname -m)" \
+    && case "$arch" in \
+         x86_64)  arch="x64" ;; \
+         aarch64) arch="arm64" ;; \
+         *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; \
+       esac \
+    && curl -fsSL "https://downloads.claude.ai/claude-code-releases/${CLAUDE_CODE_VERSION}/linux-${arch}/claude" \
+       -o /usr/local/bin/claude \
+    && chmod 755 /usr/local/bin/claude \
+    && claude --version
 
-# Create a non-root user for running the server.
-RUN groupadd --system t3 && \
-    useradd --system --create-home --gid t3 t3
+# Run as a non-root user. The home directory is /data so CLI credentials
+# (OpenCode, Codex, Claude Code) persist in the data volume, including when
+# /data is a bind mount.
+RUN groupadd --system t3 \
+    && mkdir -p /app /data \
+    && useradd --system --no-create-home --home-dir /data --gid t3 t3 \
+    && chown -R t3:t3 /app /data
 
 WORKDIR /app
 
-# Copy the production bundle from the builder stage.
-COPY --from=builder --chown=t3:t3 /app/deploy ./
+ENV NODE_ENV=production \
+    HOME=/data \
+    T3CODE_HOME=/data \
+    T3CODE_HOST=0.0.0.0 \
+    T3CODE_PORT=3773
 
-# Set the runtime environment.
-ENV NODE_ENV=production
-ENV T3CODE_HOME=/data
-
-# Create the data directory and give the t3 user ownership.
-RUN mkdir -p /data && chown t3:t3 /data
-
-# Drop to the non-root user before starting the server.
 USER t3
 
-# SQLite data and other runtime state are persisted here.
+# SQLite data, CLI credentials, and other runtime state are persisted here.
 VOLUME /data
 
 # Default port (overridable at runtime via T3CODE_PORT).
 EXPOSE 3773
 
-# The server binary is a Node.js script. Using ENTRYPOINT + CMD keeps the
-# image flexible: `docker run t3code` starts production mode, and users can
-# override the subcommand (e.g. `docker run t3code serve`).
-ENTRYPOINT ["node", "dist/bin.mjs"]
-CMD ["start"]
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Fallback note (kept here for reference):
-# If `pnpm deploy --filter=t3` does not work with the monorepo layout, replace
-# the deploy step with a direct copy of the built workspace and change the
-# ENTRYPOINT to `apps/server/dist/bin.mjs`:
-#
-#   COPY --from=builder --chown=t3:t3 /app/node_modules ./node_modules
-#   COPY --from=builder --chown=t3:t3 /app/apps ./apps
-#   COPY --from=builder --chown=t3:t3 /app/packages ./packages
-#   COPY --from=builder --chown=t3:t3 /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
-#   COPY --from=builder --chown=t3:t3 /app/package.json ./package.json
-#
-#   ENTRYPOINT ["node", "apps/server/dist/bin.mjs"]
-# ─────────────────────────────────────────────────────────────────────────────
+# `t3 serve` runs headless and prints pairing details. Users can override the
+# command, for example: `docker run t3code --help`.
+ENTRYPOINT ["/opt/t3/t3"]
+CMD ["serve"]

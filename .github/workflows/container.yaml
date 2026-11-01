@@ -2,12 +2,19 @@ name: container
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
     tags:
     - "v*.*.*"
     - "v*.*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
@@ -28,12 +35,12 @@ jobs:
 
         if [ "${{github.event_name}}" == "pull_request" ]; then
           echo 'push=false' >> $GITHUB_OUTPUT
-          echo "cache_from=\"type=registry,ref=${REGISTRY_IMAGE}:buildcache\"" >> $GITHUB_OUTPUT
-          echo 'cache_to=""' >> $GITHUB_OUTPUT
+          echo "cache_from=type=registry,ref=${REGISTRY_IMAGE}:buildcache" >> $GITHUB_OUTPUT
+          echo 'cache_to=' >> $GITHUB_OUTPUT
         else
           echo 'push=true' >> $GITHUB_OUTPUT
-          echo "cache_from=\"type=registry,ref=${REGISTRY_IMAGE}:buildcache\"" >> $GITHUB_OUTPUT
-          echo "cache_to=\"type=registry,ref=${REGISTRY_IMAGE}:buildcache,mode=max\"" >> $GITHUB_OUTPUT
+          echo "cache_from=type=registry,ref=${REGISTRY_IMAGE}:buildcache" >> $GITHUB_OUTPUT
+          echo "cache_to=type=registry,ref=${REGISTRY_IMAGE}:buildcache,mode=max" >> $GITHUB_OUTPUT
         fi
         echo "github_server_url=\"${GITHUB_SERVER_URL}\"" >> $GITHUB_OUTPUT
 
