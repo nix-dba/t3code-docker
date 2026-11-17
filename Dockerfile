@@ -12,7 +12,7 @@ FROM node:26-bookworm-slim
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Versions are tracked by Renovate (see renovate.json).
-ARG T3CODE_VERSION=0.1.9
+ARG T3CODE_VERSION=0.1.10
 ARG OPENCODE_VERSION=2.3.0
 ARG CODEX_VERSION=0.169.0
 ARG CLAUDE_CODE_VERSION=2.1.326
