@@ -13,7 +13,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Versions are tracked by Renovate (see renovate.json).
 ARG T3CODE_VERSION=0.1.12
-ARG OPENCODE_VERSION=2.4.1
+ARG OPENCODE_VERSION=2.4.2
 ARG CODEX_VERSION=0.172.0
 ARG CLAUDE_CODE_VERSION=2.1.332
 ARG IMAGE_SOURCE=""
